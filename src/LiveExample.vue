@@ -12,8 +12,8 @@ const roomId = ref('')
 const uiClient = shallowRef<ConvoKitUiClient | null>(null)
 const error = ref<string | null>(null)
 
-const sdk = backendUrl && clientId && tokenEndpoint ? markRaw(new ConvoKitClient({
-  backendUrl,
+const sdk = clientId && tokenEndpoint ? markRaw(new ConvoKitClient({
+  ...(backendUrl ? { backendUrl } : {}),
   clientId,
   tokenProvider: async (appUserId) => {
     const response = await fetch(tokenEndpoint, {
@@ -47,7 +47,7 @@ function openRoom() {
 </script>
 
 <template>
-  <main v-if="!sdk" class="live-setup"><h1>Live ConvoKit example</h1><p>Set <code>VITE_CONVOKIT_BACKEND_URL</code>, <code>VITE_CONVOKIT_CLIENT_ID</code>, and <code>VITE_CONVOKIT_TOKEN_ENDPOINT</code> to enable this page.</p></main>
+  <main v-if="!sdk" class="live-setup"><h1>Live ConvoKit example</h1><p>Set <code>VITE_CONVOKIT_CLIENT_ID</code> and <code>VITE_CONVOKIT_TOKEN_ENDPOINT</code> to enable this page.</p></main>
   <main v-else-if="!uiClient" class="live-setup"><h1>Live ConvoKit example</h1><label>App user ID<input v-model="userId"></label><button type="button" @click="connect">Connect</button><p v-if="error" role="alert">{{ error }}</p></main>
   <main v-else class="live-layout">
     <aside><ConversationList :client="uiClient" :selected-conversation-id="roomId" @conversation-select="roomId = $event.id" /></aside>
