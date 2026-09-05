@@ -24,14 +24,14 @@ Use the selector to compare configurations, or open `?variant=standard`,
 
 ![Standard ConvoKit Vue conversation list and chat components](doc/screenshots/standard-components.png)
 
-Package defaults plus refresh, attachment, read-position, image/file rendering,
-and bottom-anchored messages.
+Web-native, shadcn-inspired package defaults plus refresh, attachment,
+read-position, image/file rendering, and bottom-anchored messages.
 
 ### Branded customer support
 
 ![Branded ConvoKit Vue customer support interface](doc/screenshots/branded-support.png)
 
-A purple support workspace built with the `conversation-item`, `header`,
+A restrained product-branded support workspace built with the `conversation-item`, `header`,
 `media`, `read-receipt`, and `composer` named slots.
 
 ### Compact operations

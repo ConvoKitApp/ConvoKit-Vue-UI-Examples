@@ -18,17 +18,17 @@ const variants: Array<{ id: Variant; label: string }> = [
 const details = {
   standard: {
     number: '1', title: 'Standard components',
-    description: 'Default list rows, header, bubbles, receipts, images, files and composer.',
+    description: 'Neutral, shadcn-inspired defaults for lists, messages, receipts, media and the composer.',
     props: ['onRefresh', 'onAddAttachment', 'readAtByUserId', 'reverseMessages: true'],
   },
   branded: {
     number: '2', title: 'Branded customer support',
-    description: 'A purple support workspace with custom rows, header, ticket, receipt and composer.',
+    description: 'A product-branded support workspace built from the same headless slots.',
     props: ['#conversation-item', '#header', '#media', '#read-receipt', '#composer'],
   },
   compact: {
     number: '3', title: 'Compact operations view',
-    description: 'Dense list and message rendering for dashboards with limited space.',
+    description: 'A restrained data-dense treatment for web dashboards with limited space.',
     props: ['density: compact', '#conversation-item', '#message', '#typing-indicator', 'stickToBottom: false'],
   },
 } satisfies Record<Variant, { number: string; title: string; description: string; props: string[] }>
@@ -43,7 +43,7 @@ const detail = computed(() => details[variant.value])
 const selected = conversations[0]!
 const typing = computed(() => new Set(variant.value === 'standard' ? [] : ['alex']))
 const theme = computed(() => variant.value === 'branded' ? {
-  primary: '#6548ad', background: '#f8f6ff', border: '#e2dcf2', outgoingBubble: '#6548ad',
+  primary: '#6d45a8', background: '#fbfaff', border: '#e5dff0', outgoingBubble: '#6d45a8',
 } : {})
 
 function chooseVariant(next: Variant) {
@@ -68,7 +68,7 @@ function ticketLabel(media: MessageMedia) {
       <header class="showcase__header">
         <div class="brand">
           <span class="brand__mark"><Bot aria-hidden="true" /></span>
-          <span><strong>ConvoKit Vue UI</strong><small>Same SDK components, configured with Vue props and named slots</small></span>
+          <span><strong>ConvoKit Vue UI</strong><small>Web-native components, configured with Vue props and named slots</small></span>
         </div>
         <nav class="variant-tabs" aria-label="Component configuration">
           <button v-for="item in variants" :key="item.id" type="button" :data-active="item.id === variant || undefined" @click="chooseVariant(item.id)">
