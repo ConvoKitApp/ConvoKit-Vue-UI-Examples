@@ -4,6 +4,7 @@ import {
   ConversationListView,
   ConversationView,
   ConvoKitThemeProvider,
+  isConvoKitPendingMessage,
 } from '@convokitapp/vue-ui'
 import { ArrowLeft, Bot, CheckCheck, Circle, Headphones, Paperclip, Send, Ticket, Users } from '@lucide/vue'
 import { computed, ref } from 'vue'
@@ -54,7 +55,11 @@ function chooseVariant(next: Variant) {
 }
 
 function formatTime(date: Date) {
-  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+  return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+}
+
+function messageStatus(message: (typeof messages)[number]) {
+  return isConvoKitPendingMessage(message) ? 'Sending…' : formatTime(message.createdAt)
 }
 
 function ticketLabel(media: MessageMedia) {
@@ -173,7 +178,7 @@ function ticketLabel(media: MessageMedia) {
             :stick-to-bottom="false"
           >
             <template #header><header class="compact-header"><ArrowLeft /><strong>{{ selected.displayTitle }}</strong><span>Live</span></header></template>
-            <template #message="slotProps"><div class="compact-message"><strong>{{ slotProps.isCurrentUser ? 'You' : slotProps.sender?.name.split(' ')[0] }}</strong><span>{{ slotProps.message.text }}</span><time>{{ formatTime(slotProps.message.createdAt) }}</time></div></template>
+            <template #message="slotProps"><div class="compact-message"><strong>{{ slotProps.isCurrentUser ? 'You' : slotProps.sender?.name.split(' ')[0] }}</strong><span>{{ slotProps.message.text }}</span><time>{{ messageStatus(slotProps.message) }}</time></div></template>
             <template #typing-indicator><div class="compact-typing">Jordan Lee is responding…</div></template>
             <template #composer="slotProps"><div class="compact-composer"><input :value="slotProps.value" placeholder="Message" @input="slotProps.setValue(($event.target as HTMLInputElement).value)"><button type="button" aria-label="Send" @click="slotProps.send"><Send /></button></div></template>
           </ConversationView>
