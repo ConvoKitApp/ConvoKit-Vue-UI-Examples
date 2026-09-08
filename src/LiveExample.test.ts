@@ -25,6 +25,7 @@ function fakeUiClient(): uiLibrary.ConvoKitUiClient {
     markConversationRead: vi.fn(async () => undefined),
     sendTyping: vi.fn(async () => undefined),
     onConnectionEvent: subscription,
+    onInboxChanged: subscription,
     onMessage: subscription,
     onMessageDeleted: subscription,
     onReadReceipt: subscription,

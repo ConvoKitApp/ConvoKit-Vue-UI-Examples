@@ -195,7 +195,7 @@ function setListController(value: ConversationListController) {
               @conversation-select="selectRoom($event.id)"
             />
             <div class="demo-sidebar-footer">
-              <span class="status-dot" />{{ state.status }}<span>UI SDK 0.3.0</span>
+              <span class="status-dot" />{{ state.status }}<span>UI SDK 0.4.0</span>
             </div>
           </aside>
           <section class="demo-chat-panel" aria-label="Chat workspace">
