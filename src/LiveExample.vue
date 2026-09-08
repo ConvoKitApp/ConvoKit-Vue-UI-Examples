@@ -191,7 +191,7 @@ function setListController(value: ConversationListController) {
               :client="ui"
               :page-size="20"
               :selected-conversation-id="state.roomId"
-              :on-controller-change="setListController"
+              @controller-change="setListController"
               @conversation-select="selectRoom($event.id)"
             />
             <div class="demo-sidebar-footer">

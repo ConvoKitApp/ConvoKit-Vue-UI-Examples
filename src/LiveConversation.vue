@@ -47,7 +47,6 @@ async function attach(event: Event) {
       :client="ui"
       :conversation-id="roomId"
       :message-page-size="30"
-      :on-controller-change="setController"
       :on-add-attachment="
         () => {
           if (!uploading) picker?.click()
@@ -62,6 +61,7 @@ async function attach(event: Event) {
       "
       composer-placeholder="Message your team…"
       :format-time="(date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })"
+      @controller-change="setController"
       @back="emit('back')"
     />
   </div>
