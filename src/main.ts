@@ -4,5 +4,6 @@ import './styles.css'
 import LiveExample from './LiveExample.vue'
 import ShowcaseApp from './ShowcaseApp.vue'
 
-const isLive = new URLSearchParams(window.location.search).get('mode') === 'live'
+const params = new URLSearchParams(window.location.search)
+const isLive = params.get('mode') !== 'showcase' && (!params.has('variant') || params.get('mode') === 'live')
 createApp(isLive ? LiveExample : ShowcaseApp).mount('#app')
