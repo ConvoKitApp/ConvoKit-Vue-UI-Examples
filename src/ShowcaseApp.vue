@@ -75,9 +75,20 @@ function preview({ summary, currentUserId: viewer }: ConversationItemSlotProps) 
   return message.senderId === viewer ? `You: ${body}` : body
 }
 
+/** The numeric badge: only for a count (or a capped count), `99+` above 99. */
 function unreadLabel(summary: InboxSummary | undefined) {
   if (!summary || (summary.unreadCount <= 0 && !summary.unreadCountCapped)) return ''
   return summary.unreadCountCapped || summary.unreadCount > 99 ? '99+' : String(summary.unreadCount)
+}
+
+/** The numberless dot: the viewer's private marker (`isUnread`) with no count to show, never `0 unread`. */
+function unreadDot(summary: InboxSummary | undefined) {
+  return summary !== undefined && summary.isUnread && !unreadLabel(summary)
+}
+
+/** The row's unread state (bold title): a count, a capped count or the private marker, as the default rows do. */
+function isUnread(summary: InboxSummary | undefined) {
+  return summary !== undefined && (summary.isUnread || summary.unreadCount > 0 || summary.unreadCountCapped)
 }
 </script>
 
@@ -121,10 +132,11 @@ function unreadLabel(summary: InboxSummary | undefined) {
             :on-conversation-select="() => undefined"
           >
             <template #conversation-item="slotProps">
-              <button type="button" class="branded-row" :data-selected="slotProps.selected || undefined" @click="slotProps.select">
+              <button type="button" class="branded-row" :data-selected="slotProps.selected || undefined" :data-unread="isUnread(slotProps.summary) || undefined" @click="slotProps.select">
                 <span class="branded-row__avatar">{{ slotProps.conversation.displayTitle[0] }}</span>
                 <span><strong>{{ slotProps.conversation.displayTitle }}</strong><small>{{ preview(slotProps) }}</small></span>
                 <b v-if="unreadLabel(slotProps.summary)">{{ unreadLabel(slotProps.summary) }}</b>
+                <i v-else-if="unreadDot(slotProps.summary)" class="branded-row__dot" role="img" aria-label="Unread" />
               </button>
             </template>
           </ConversationListView>
@@ -138,8 +150,8 @@ function unreadLabel(summary: InboxSummary | undefined) {
             density="compact"
           >
             <template #conversation-item="slotProps">
-              <button type="button" class="compact-row" @click="slotProps.select">
-                <span>{{ slotProps.conversation.displayTitle[0] }}</span><strong>{{ slotProps.conversation.displayTitle }}</strong><b v-if="unreadLabel(slotProps.summary)">{{ unreadLabel(slotProps.summary) }}</b><Circle v-if="slotProps.selected" fill="currentColor" :size="7" />
+              <button type="button" class="compact-row" :data-unread="isUnread(slotProps.summary) || undefined" @click="slotProps.select">
+                <span>{{ slotProps.conversation.displayTitle[0] }}</span><strong>{{ slotProps.conversation.displayTitle }}</strong><b v-if="unreadLabel(slotProps.summary)">{{ unreadLabel(slotProps.summary) }}</b><i v-else-if="unreadDot(slotProps.summary)" class="compact-row__dot" role="img" aria-label="Unread" /><Circle v-if="slotProps.selected" fill="currentColor" :size="7" />
               </button>
             </template>
           </ConversationListView>

@@ -5,16 +5,32 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LiveExample from './LiveExample.vue'
 import LiveConversation from './LiveConversation.vue'
 import { DemoModel } from './demo'
-import { conversations, messages } from './fixtures'
+import { conversations, messages, summaries } from './fixtures'
 
 vi.mock('@convokitapp/vue-ui', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@convokitapp/vue-ui')>()
   return { ...actual, createConvoKitUiClient: vi.fn(actual.createConvoKitUiClient) }
 })
 
-function fakeUiClient(): uiLibrary.ConvoKitUiClient {
+/** A legacy-shaped adapter (the list falls back to `getConversations`). `inbox: true` adds the optional 0.6/0.7
+ * members, so the list pages the fixture summaries and can mark a room unread through the published controller.
+ */
+function fakeUiClient(options: { inbox?: boolean } = {}): uiLibrary.ConvoKitUiClient {
   const subscription = () => ({ closed: false, unsubscribe: vi.fn(async () => undefined) })
   return {
+    ...(options.inbox ? {
+      listInbox: vi.fn(async () => ({
+        entries: conversations.map((conversation) => ({ conversation, ...summaries.get(conversation.id)! })),
+        nextCursor: null,
+      })),
+      onInboxActivity: subscription,
+      markConversationUnread: vi.fn(async (conversationId: string) => ({
+        conversationId, unreadMarkedAt: new Date('2026-08-26T12:00:00Z'), privateStateVersion: 1,
+      })),
+      clearConversationUnread: vi.fn(async (conversationId: string) => ({
+        conversationId, cleared: true, unreadMarkedAt: null, privateStateVersion: 2,
+      })),
+    } : {}),
     sessionIdentity: {},
     currentUserId: 'maya',
     getConversations: vi.fn(async () => conversations),
@@ -96,6 +112,39 @@ describe('Vue live demo', () => {
       await wrapper.get('.demo-panel-title button').trigger('click')
       await flushPromises()
       expect(ui.getConversations).toHaveBeenCalled()
+    } finally {
+      wrapper.unmount()
+    }
+  })
+  it('marks the open room unread through the published list controller and renders the package dot', async () => {
+    const ui = fakeUiClient({ inbox: true })
+    vi.spyOn(DemoModel.prototype, 'start').mockImplementation(async function (this: DemoModel) {
+      Object.assign(this.getSnapshot(), { sdk: {} as ConvoKitClient, userId: 'maya' })
+      this.log('Connected test client')
+    })
+    vi.mocked(uiLibrary.createConvoKitUiClient).mockReturnValueOnce(ui)
+    const wrapper = mount(LiveExample)
+    const productLaunch = () =>
+      wrapper.findAll('[role="listitem"]').find((row) => row.text().includes('Product launch'))!
+    try {
+      await flushPromises()
+      // The fixture inbox already carries one marked room (design review); the rest show counts or nothing.
+      expect(wrapper.findAll('.ckui-unread-badge--dot')).toHaveLength(1)
+      expect(productLaunch().find('.ckui-unread-badge--dot').exists()).toBe(false)
+      await productLaunch().get('button').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[aria-label="Back to conversations"]').exists()).toBe(true)
+      await wrapper.get('[aria-label="Mark unread"]').trigger('click')
+      await flushPromises()
+      expect(ui.markConversationUnread).toHaveBeenCalledWith('product-launch')
+      // The controller patched the row's summary; the package's default row renders the numberless dot.
+      expect(productLaunch().find('.ckui-unread-badge--dot').attributes('aria-label')).toBe('Unread')
+      expect(productLaunch().find('[data-unread]').exists()).toBe(true)
+      expect(wrapper.find('[aria-label="0 unread"]').exists()).toBe(false)
+      expect(wrapper.findAll('.ckui-unread-badge--dot')).toHaveLength(2)
+      // The demo leaves the room so reopening it acknowledges (and clears) with a freshly captured version.
+      expect(wrapper.find('[aria-label="Back to conversations"]').exists()).toBe(false)
+      expect(wrapper.text()).toContain('Marked unread · product-')
     } finally {
       wrapper.unmount()
     }

@@ -117,7 +117,10 @@ export const readAtByUserId = new Map([
 /** The viewer of every showcase surface; the list reads its own messages as `You: …`. */
 export const currentUserId = 'maya'
 
-/** Per-room inbox rows as `listInbox` returns them (the newest surviving message, unread count and read state). */
+/** Per-room inbox rows as `listInbox` returns them (the newest surviving message, unread count, read state and the
+ * viewer's private unread marker). `isUnread` is `unreadCount > 0 || unreadCountCapped || unreadMarkedAt !== null`; a
+ * marker without a count (design review) renders as a numberless dot, never an invented count.
+ */
 export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, InboxSummary>([
   ['product-launch', {
     latestMessage: messages[3]!,
@@ -125,6 +128,9 @@ export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, Inbo
     unreadCountCapped: false,
     readPosition: { messageId: 'message-4', createdAt: new Date('2026-08-26T11:27:00Z') },
     lastReadAt: new Date('2026-08-26T11:30:00Z'),
+    isUnread: false,
+    unreadMarkedAt: null,
+    privateStateVersion: 0,
     activityAt: new Date('2026-08-26T11:27:00Z'),
   }],
   ['customer-operations', {
@@ -141,6 +147,9 @@ export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, Inbo
     unreadCountCapped: false,
     readPosition: null,
     lastReadAt: new Date('2026-08-26T10:40:00Z'),
+    isUnread: true,
+    unreadMarkedAt: null,
+    privateStateVersion: 0,
     activityAt: new Date('2026-08-26T11:26:00Z'),
   }],
   ['design-review', {
@@ -153,10 +162,14 @@ export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, Inbo
       createdAt: new Date('2026-08-26T11:25:00Z'),
       updatedAt: null,
     },
-    unreadCount: 1,
+    // Read through the photo, then marked unread to revisit: no count, only the viewer's private marker.
+    unreadCount: 0,
     unreadCountCapped: false,
-    readPosition: null,
-    lastReadAt: new Date('2026-08-26T09:15:00Z'),
+    readPosition: { messageId: 'message-6', createdAt: new Date('2026-08-26T11:25:00Z') },
+    lastReadAt: new Date('2026-08-26T11:29:00Z'),
+    isUnread: true,
+    unreadMarkedAt: new Date('2026-08-26T11:31:00Z'),
+    privateStateVersion: 1,
     activityAt: new Date('2026-08-26T11:25:00Z'),
   }],
   ['incident-room', {
@@ -173,6 +186,9 @@ export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, Inbo
     unreadCountCapped: false,
     readPosition: null,
     lastReadAt: null,
+    isUnread: true,
+    unreadMarkedAt: null,
+    privateStateVersion: 0,
     activityAt: new Date('2026-08-26T11:24:00Z'),
   }],
 ])

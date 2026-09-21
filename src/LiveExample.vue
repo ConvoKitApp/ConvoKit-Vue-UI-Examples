@@ -11,6 +11,7 @@ import {
   Check,
   Copy,
   LogOut,
+  Mail,
   MessageCircle,
   Plus,
   RefreshCw,
@@ -32,6 +33,7 @@ const userId = ref(state.value.userId)
 const modal = ref<'join' | 'create' | null>(null)
 const roomDraft = ref('')
 const copied = ref(false)
+const marking = ref(false)
 let list: ConversationListController | null = null
 // The SDK is never proxied. Its session identity must remain stable for the UI.
 const ui = shallowRef<ConvoKitUiClient | null>(null)
@@ -82,6 +84,24 @@ function refresh() {
 function setListController(value: ConversationListController) {
   list = value
 }
+/** Mark the open room unread through the published list controller, then leave it. The marker is private to this
+ * user; the list's default row shows it as a numberless dot (no invented count), other devices pick it up from the
+ * activity signal, and reopening the room clears it with the version captured at that open.
+ */
+async function markUnread() {
+  const roomId = state.value.roomId
+  if (!list || !roomId || marking.value) return
+  marking.value = true
+  try {
+    await list.markUnread(roomId)
+    model.log('Marked unread · ' + roomId.slice(0, 8))
+    selectRoom('')
+  } catch (cause) {
+    model.report(cause)
+  } finally {
+    marking.value = false
+  }
+}
 </script>
 
 <template>
@@ -119,7 +139,7 @@ function setListController(value: ConversationListController) {
             and Flutter.
           </p>
           <div class="demo-feature-tags">
-            <span>Live messages</span><span>Images &amp; files</span><span>Read receipts</span>
+            <span>Live messages</span><span>Images &amp; files</span><span>Read receipts</span><span>Mark unread</span>
           </div>
         </div>
         <form class="demo-login-card" @submit.prevent="model.connect(userId)">
@@ -195,7 +215,7 @@ function setListController(value: ConversationListController) {
               @conversation-select="selectRoom($event.id)"
             />
             <div class="demo-sidebar-footer">
-              <span class="status-dot" />{{ state.status }}<span>UI SDK 0.6.0</span>
+              <span class="status-dot" />{{ state.status }}<span>UI SDK 0.7.0</span>
             </div>
           </aside>
           <section class="demo-chat-panel" aria-label="Chat workspace">
@@ -210,6 +230,15 @@ function setListController(value: ConversationListController) {
                   <ArrowLeft :size="18" />
                 </button><code :title="state.roomId">{{ state.roomId }}</code><button class="icon-button" type="button" aria-label="Copy room ID" @click="copyRoom">
                   <Check v-if="copied" :size="16" /><Copy v-else :size="16" />
+                </button><button
+                  class="icon-button"
+                  type="button"
+                  title="Mark unread"
+                  aria-label="Mark unread"
+                  :disabled="marking"
+                  @click="markUnread"
+                >
+                  <Mail :size="16" />
                 </button>
               </div>
               <LiveConversation

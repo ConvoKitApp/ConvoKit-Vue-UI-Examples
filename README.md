@@ -9,13 +9,17 @@ Vue UI package and the core [`@convokitapp/sdk`](https://www.npmjs.com/package/@
 
 ## Live open-chatroom demo
 
-This example consumes the published 0.6.0 core and UI packages. The SDK-backed
+This example consumes the published 0.7.0 core and UI packages. The SDK-backed
 conversation list pages the inbox in activity order and renders each room's
 latest-message preview, activity time and unread badge by itself, refreshing on
-room/membership changes and on new activity. The chat view replaces pending
-messages when their matching live/history confirmation arrives. No demo-side
-polling, preview or unread bookkeeping, text matching or duplicate-bubble
-workaround is required.
+room/membership changes and on new activity. A room you mark unread shows a
+numberless dot (never an invented count) that only you can see; the room bar's
+"Mark unread" button calls the list controller's `markUnread(conversationId)`,
+and reopening the room clears the marker through the chat view's own
+acknowledgement, which carries the version captured when the room opened. The
+chat view replaces pending messages when their matching live/history
+confirmation arrives. No demo-side polling, preview or unread bookkeeping, text
+matching or duplicate-bubble workaround is required.
 
 [Open the Vue demo](https://convokit-vue-demo.vercel.app). It uses the same backend, demo personas and
 room IDs as the [Flutter demo](https://convokit-open-chatroom.vercel.app).
@@ -26,6 +30,10 @@ required to try the shared demo.
 - Create a conversation and copy its room ID, or join an existing room by ID.
 - Open another framework/device with a different persona to test messages,
   typing, read receipts, images and files. Attachments are limited to 20 MB.
+- Open a room and press "Mark unread" in the room bar: the list shows the dot
+  at once, another device signed in as the same user picks it up from the
+  activity signal, and other members never see it. Open the room again to
+  clear it.
 - Reload restores the user and selected room. Switch user ends that SDK session.
 - The inbox and chat are the published UI package's components/controllers.
   App code only supplies branding, the demo identity/room flow and upload/download hooks.
@@ -52,8 +60,9 @@ Use the selector to compare configurations, or open `?variant=standard`,
 ![Standard ConvoKit Vue conversation list and chat components](doc/screenshots/standard-components.png)
 
 Web-native, shadcn-inspired package defaults plus inbox previews and unread
-badges from `summaries`/`currentUserId`, refresh, attachment, read-position,
-image/file rendering, and bottom-anchored messages.
+badges from `summaries`/`currentUserId` (a count, `99+` when capped, or the
+package's numberless dot for a room marked unread with nothing new), refresh,
+attachment, read-position, image/file rendering, and bottom-anchored messages.
 
 ### Branded customer support
 
@@ -61,14 +70,16 @@ image/file rendering, and bottom-anchored messages.
 
 A restrained product-branded support workspace built with the `conversation-item`, `header`,
 `media`, `read-receipt`, and `composer` named slots. The custom rows read the
-`summary` and `currentUserId` slot props for their preview line and unread count.
+`summary` and `currentUserId` slot props for their preview line, unread count
+and, from `summary.isUnread`, their own dot for a marked room without a count.
 
 ### Compact operations
 
 ![Compact ConvoKit Vue operations interface](doc/screenshots/compact-operations.png)
 
 A dense dashboard built with `density="compact"`, custom rows with unread
-badges, message lines, typing state, composer, and `stick-to-bottom="false"`.
+badges and the mark-unread dot, message lines, typing state, composer, and
+`stick-to-bottom="false"`.
 
 The complete configuration is in [`src/ShowcaseApp.vue`](src/ShowcaseApp.vue).
 
