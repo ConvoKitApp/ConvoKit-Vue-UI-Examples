@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import type { ConvoKitClient } from '@convokitapp/sdk'
+import type { ConvoKitClient, EditMessageInput, Message } from '@convokitapp/sdk'
 import * as uiLibrary from '@convokitapp/vue-ui'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LiveExample from './LiveExample.vue'
@@ -13,11 +13,20 @@ vi.mock('@convokitapp/vue-ui', async (importOriginal) => {
 })
 
 /** A legacy-shaped adapter (the list falls back to `getConversations`). `inbox: true` adds the optional 0.6/0.7
- * members, so the list pages the fixture summaries and can mark a room unread through the published controller.
+ * members, so the list pages the fixture summaries and can mark a room unread through the published controller;
+ * `edits: true` adds the optional 0.8 members, so the room's default rows offer the viewer's own messages for editing
+ * and deletion. The edit fake answers like the backend: the new text and the revision moved up by one.
  */
-function fakeUiClient(options: { inbox?: boolean } = {}): uiLibrary.ConvoKitUiClient {
+function fakeUiClient(options: { inbox?: boolean; edits?: boolean } = {}): uiLibrary.ConvoKitUiClient {
   const subscription = () => ({ closed: false, unsubscribe: vi.fn(async () => undefined) })
   return {
+    ...(options.edits ? {
+      editMessage: vi.fn(async (messageId: string, input: EditMessageInput) => ({
+        ...messages.find((message) => message.id === messageId)!,
+        text: input.text, revision: input.revision + 1, updatedAt: new Date('2026-08-26T12:01:00Z'),
+      })),
+      deleteMessage: vi.fn(async () => undefined),
+    } : {}),
     ...(options.inbox ? {
       listInbox: vi.fn(async () => ({
         entries: conversations.map((conversation) => ({ conversation, ...summaries.get(conversation.id)! })),
@@ -35,7 +44,7 @@ function fakeUiClient(options: { inbox?: boolean } = {}): uiLibrary.ConvoKitUiCl
     currentUserId: 'maya',
     getConversations: vi.fn(async () => conversations),
     getConversation: vi.fn(async () => conversations[0]!),
-    getMessages: vi.fn(async () => []),
+    getMessages: vi.fn(async (): Promise<Message[]> => []),
     getMessage: vi.fn(async () => messages[0]!),
     sendMessage: vi.fn(async (input) => ({ ...messages[1]!, ...input, id: 'uploaded-message' })),
     markConversationRead: vi.fn(async () => undefined),
@@ -145,6 +154,47 @@ describe('Vue live demo', () => {
       // The demo leaves the room so reopening it acknowledges (and clears) with a freshly captured version.
       expect(wrapper.find('[aria-label="Back to conversations"]').exists()).toBe(false)
       expect(wrapper.text()).toContain('Marked unread · product-')
+    } finally {
+      wrapper.unmount()
+    }
+  })
+  it('edits and deletes the viewer\'s own messages through the package defaults and the 0.8 adapter members', async () => {
+    const ui = fakeUiClient({ edits: true })
+    vi.mocked(ui.getMessages).mockResolvedValue([...messages].reverse())
+    const wrapper = mount(LiveConversation, { props: { ui, sdk: {} as ConvoKitClient, roomId: 'product-launch' } })
+    const rowOf = (id: string) => wrapper.find(`[data-message-id="${id}"]`)
+    try {
+      await flushPromises()
+      // The package's default rows: `Edited` from `revision`, actions only on the viewer's own confirmed rows.
+      expect(rowOf('message-2').find('.ckui-message-edited').text()).toBe('Edited')
+      expect(rowOf('message-1').find('.ckui-message-actions').exists()).toBe(false)
+      expect(rowOf('message-3').find('.ckui-message-actions').exists()).toBe(false)
+      expect(rowOf('message-4').find('[aria-label="Edit message"]').exists()).toBe(true)
+      await rowOf('message-4').get('[aria-label="Edit message"]').trigger('click')
+      await flushPromises()
+      // The default composer prefilled the row's text without a typing update.
+      expect(wrapper.get('.ckui-composer__editing').text()).toContain('I linked this conversation to the support case.')
+      expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe('I linked this conversation to the support case.')
+      expect(ui.sendTyping).not.toHaveBeenCalled()
+      await wrapper.get('textarea').setValue('I linked this conversation to the support case and the runbook.')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      // The room controller sent the snapshot's revision; the response row replaced the message and reads `Edited`.
+      expect(ui.editMessage).toHaveBeenCalledExactlyOnceWith('message-4', {
+        text: 'I linked this conversation to the support case and the runbook.', revision: 0,
+      })
+      expect(rowOf('message-4').find('.ckui-message-text').text()).toBe('I linked this conversation to the support case and the runbook.')
+      expect(rowOf('message-4').find('.ckui-message-edited').exists()).toBe(true)
+      expect(wrapper.find('.ckui-composer__editing').exists()).toBe(false)
+      expect(wrapper.find('[aria-label="Send message"]').exists()).toBe(true)
+      // Delete: the package's inline prompt, then the adapter, then the row is gone.
+      await rowOf('message-4').get('[aria-label="Delete message"]').trigger('click')
+      expect(ui.deleteMessage).not.toHaveBeenCalled()
+      await wrapper.get('[aria-label="Confirm delete"]').trigger('click')
+      await flushPromises()
+      expect(ui.deleteMessage).toHaveBeenCalledExactlyOnceWith('message-4')
+      expect(rowOf('message-4').exists()).toBe(false)
+      expect(wrapper.find('.demo-error').exists()).toBe(false)
     } finally {
       wrapper.unmount()
     }

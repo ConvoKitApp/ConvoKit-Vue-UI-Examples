@@ -47,6 +47,10 @@ export const conversations: Conversation[] = [
   updatedAt: new Date(`2026-08-26T11:${27 - index}:00Z`),
 }))
 
+/** Rows as `getMessages` returns them (0.8.0 adds `revision`: 0 when sent, +1 per edit). One row is edited so the
+ * package's `Edited` label renders; the viewer's own confirmed rows (`maya`) are the ones the views let her edit or
+ * delete. `revision`, never `updatedAt`, is the edited signal.
+ */
 export const messages: Message[] = [
   {
     id: 'message-1',
@@ -56,6 +60,7 @@ export const messages: Message[] = [
     media: [],
     createdAt: new Date('2026-08-26T11:14:00Z'),
     updatedAt: null,
+    revision: 0,
   },
   {
     id: 'message-2',
@@ -72,7 +77,9 @@ export const messages: Message[] = [
       },
     ],
     createdAt: new Date('2026-08-26T11:19:00Z'),
-    updatedAt: null,
+    // Caption edited once after the send: the row reads `Edited`; its attachment was kept.
+    updatedAt: new Date('2026-08-26T11:21:00Z'),
+    revision: 1,
   },
   {
     id: 'message-3',
@@ -90,6 +97,7 @@ export const messages: Message[] = [
     ],
     createdAt: new Date('2026-08-26T11:23:00Z'),
     updatedAt: null,
+    revision: 0,
   },
   {
     id: 'message-4',
@@ -106,6 +114,7 @@ export const messages: Message[] = [
     ],
     createdAt: new Date('2026-08-26T11:27:00Z'),
     updatedAt: null,
+    revision: 0,
   },
 ]
 
@@ -117,9 +126,10 @@ export const readAtByUserId = new Map([
 /** The viewer of every showcase surface; the list reads its own messages as `You: …`. */
 export const currentUserId = 'maya'
 
-/** Per-room inbox rows as `listInbox` returns them (the newest surviving message, unread count, read state and the
- * viewer's private unread marker). `isUnread` is `unreadCount > 0 || unreadCountCapped || unreadMarkedAt !== null`; a
- * marker without a count (design review) renders as a numberless dot, never an invented count.
+/** Per-room inbox rows as `listInbox` returns them (the newest surviving message with its `revision`, unread count,
+ * read state and the viewer's private unread marker). `isUnread` is
+ * `unreadCount > 0 || unreadCountCapped || unreadMarkedAt !== null`; a marker without a count (design review) renders
+ * as a numberless dot, never an invented count.
  */
 export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, InboxSummary>([
   ['product-launch', {
@@ -142,6 +152,7 @@ export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, Inbo
       media: [],
       createdAt: new Date('2026-08-26T11:26:00Z'),
       updatedAt: null,
+      revision: 0,
     },
     unreadCount: 2,
     unreadCountCapped: false,
@@ -161,6 +172,7 @@ export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, Inbo
       media: [{ id: 'image-2', type: 'image', name: 'settings-panel.png', url: '/launch-board.svg', size: 92160 }],
       createdAt: new Date('2026-08-26T11:25:00Z'),
       updatedAt: null,
+      revision: 0,
     },
     // Read through the photo, then marked unread to revisit: no count, only the viewer's private marker.
     unreadCount: 0,
@@ -181,6 +193,7 @@ export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, Inbo
       media: [],
       createdAt: new Date('2026-08-26T11:24:00Z'),
       updatedAt: null,
+      revision: 0,
     },
     unreadCount: 120,
     unreadCountCapped: false,

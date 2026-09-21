@@ -63,11 +63,17 @@ button { color: inherit; }
 .ticket-card > span { display: grid; }
 .ticket-card small { color: #807a8b; }
 .ticket-card button { padding: 5px 9px; border: 1px solid #d4c9e3; border-radius: 6px; background: #fff; color: #6548ad; font-size: 10px; font-weight: 600; }
-.branded-composer { display: flex; align-items: center; gap: 7px; padding: 10px 12px; border-top: 1px solid #e5dff0; background: #fff; }
+.branded-composer { display: grid; gap: 7px; padding: 10px 12px; border-top: 1px solid #e5dff0; background: #fff; }
+.branded-composer > div { display: flex; align-items: center; gap: 7px; }
 .branded-composer input { flex: 1; min-width: 0; height: 38px; padding: 8px 11px; border: 1px solid #ddd4e8; border-radius: 8px; outline: none; background: #fff; }
-.branded-composer button { display: grid; min-height: 36px; place-items: center; border: 0; border-radius: 7px; background: transparent; cursor: pointer; }
-.branded-composer button:first-child { width: 36px; color: #6f6878; }
-.branded-composer button:last-child { padding: 7px 15px; background: #6d45a8; color: #fff; font-size: 12px; font-weight: 600; }
+.branded-composer[data-editing] input { border-color: #6d45a8; }
+.branded-composer > div button { display: grid; min-height: 36px; place-items: center; border: 0; border-radius: 7px; background: transparent; cursor: pointer; }
+.branded-composer > div button:first-child { width: 36px; color: #6f6878; }
+.branded-composer > div button:last-child { padding: 7px 15px; background: #6d45a8; color: #fff; font-size: 12px; font-weight: 600; }
+.branded-composer__editing { display: flex; align-items: center; gap: 6px; margin: 0; color: #5f388f; font-size: 11px; }
+.branded-composer__editing > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.branded-composer__editing button { padding: 2px 6px; border: 0; border-radius: 5px; background: transparent; color: #6d45a8; font-size: 11px; font-weight: 600; cursor: pointer; }
+.branded-composer__editing button:hover { background: #f1ecf8; }
 
 .compact-row { display: grid; grid-template-columns: 26px minmax(0,1fr); grid-auto-flow: column; grid-auto-columns: max-content; align-items: center; gap: 8px; width: 100%; min-height: 38px; padding: 5px 8px; border: 0; border-bottom: 1px solid #e4e4e7; background: #fff; text-align: left; cursor: pointer; }
 .compact-row:hover { background: #fafafa; }
@@ -80,14 +86,30 @@ button { color: inherit; }
 .compact-header { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 7px 11px; border-bottom: 1px solid #e4e4e7; background: #fff; }
 .compact-header strong { flex: 1; font-size: 12px; }
 .compact-header > span { padding: 3px 7px; border: 1px solid #bbf7d0; border-radius: 6px; background: #f0fdf4; color: #15803d; font-size: 9px; font-weight: 600; }
-.compact-message { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; gap: 8px; align-items: baseline; padding: 4px 8px; border-bottom: 1px solid #f1f1f2; font-size: 10px; }
+.compact-message { position: relative; display: grid; grid-template-columns: 48px minmax(0,1fr) auto; gap: 8px; align-items: baseline; padding: 4px 52px 4px 8px; border-bottom: 1px solid #f1f1f2; font-size: 10px; }
+.compact-message[data-editing] { background: #f4f4f5; }
 .compact-message strong { color: #52525b; font-size: 9px; font-weight: 600; }
 .compact-message time { color: #a1a1aa; font-size: 8px; }
+.compact-message__edited { margin-left: 4px; color: #a1a1aa; font-size: 8px; font-style: normal; }
+.compact-message__actions { position: absolute; top: 50%; right: 6px; display: inline-flex; gap: 2px; transform: translateY(-50%); }
+.compact-message__actions button { display: grid; width: 20px; height: 20px; place-items: center; border: 0; border-radius: 5px; background: transparent; color: #71717a; cursor: pointer; }
+.compact-message__actions button:hover { background: #f4f4f5; color: #18181b; }
+.compact-message__actions svg { width: 12px; }
+@media (hover: hover) and (pointer: fine) {
+  /* Like the package's default rows: concealed on hover-capable devices only, revealed by hover or focus. */
+  .compact-message__actions { opacity: 0; }
+  .compact-message:hover .compact-message__actions, .compact-message:focus-within .compact-message__actions { opacity: 1; }
+}
 .compact-typing { min-height: 23px; padding: 4px 10px; border-top: 1px solid #e4e4e7; background: #fafafa; color: #71717a; font-size: 9px; }
-.compact-composer { display: flex; align-items: center; gap: 7px; min-height: 48px; padding: 6px 8px; border-top: 1px solid #e4e4e7; background: #fff; }
+.compact-composer { display: grid; gap: 5px; min-height: 48px; padding: 6px 8px; border-top: 1px solid #e4e4e7; background: #fff; }
+.compact-composer > div { display: flex; align-items: center; gap: 7px; }
 .compact-composer input { flex: 1; height: 34px; padding-inline: 9px; border: 1px solid #e4e4e7; border-radius: 7px; outline: none; }
-.compact-composer button { display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 7px; background: #18181b; color: #fff; cursor: pointer; }
-.compact-composer svg { width: 15px; }
+.compact-composer[data-editing] input { border-color: #18181b; }
+.compact-composer > div button { display: grid; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 7px; background: #18181b; color: #fff; cursor: pointer; }
+.compact-composer > div svg { width: 15px; }
+.compact-composer__editing { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 0; color: #52525b; font-size: 9px; font-weight: 600; }
+.compact-composer__editing button { padding: 2px 5px; border: 0; border-radius: 4px; background: transparent; color: #18181b; font-size: 9px; font-weight: 600; cursor: pointer; }
+.compact-composer__editing button:hover { background: #f4f4f5; }
 
 .live-layout { display: grid; grid-template-columns: 320px minmax(0,1fr); gap: 16px; height: 100vh; padding: 16px; background: #fafafa; }
 .live-layout aside, .live-layout section { min-height: 0; }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { InboxSummary, MessageMedia } from '@convokitapp/sdk'
+import type { InboxSummary, Message, MessageMedia } from '@convokitapp/sdk'
 import {
   ConversationListView,
   ConversationView,
@@ -7,8 +7,10 @@ import {
   isConvoKitPendingMessage,
   type ConversationItemSlotProps,
 } from '@convokitapp/vue-ui'
-import { ArrowLeft, Bot, CheckCheck, Circle, Headphones, Paperclip, Send, Ticket, Users } from '@lucide/vue'
-import { computed, ref } from 'vue'
+import {
+  ArrowLeft, Bot, Check, CheckCheck, Circle, Headphones, Paperclip, Pencil, Send, Ticket, Trash2, Users,
+} from '@lucide/vue'
+import { computed, ref, shallowRef } from 'vue'
 import { conversations, currentUserId, messages, readAtByUserId, summaries } from './fixtures'
 
 type Variant = 'standard' | 'branded' | 'compact'
@@ -21,17 +23,17 @@ const details = {
   standard: {
     number: '1', title: 'Standard components',
     description: 'Neutral, shadcn-inspired defaults for inbox rows, messages, receipts, media and the composer.',
-    props: ['summaries', 'currentUserId', 'onRefresh', 'onAddAttachment', 'readAtByUserId', 'reverseMessages: true'],
+    props: ['summaries', 'currentUserId', 'onRefresh', 'onAddAttachment', 'readAtByUserId', 'reverseMessages: true', 'editingMessage', 'onEditMessage', 'onDeleteMessage'],
   },
   branded: {
     number: '2', title: 'Branded customer support',
     description: 'A product-branded support workspace built from the same headless slots.',
-    props: ['#conversation-item', '#header', '#media', '#read-receipt', '#composer'],
+    props: ['#conversation-item', '#header', '#media', '#read-receipt', '#composer: editing / cancelEdit'],
   },
   compact: {
     number: '3', title: 'Compact operations view',
     description: 'A restrained data-dense treatment for web dashboards with limited space.',
-    props: ['density: compact', '#conversation-item', '#message', '#typing-indicator', 'stickToBottom: false'],
+    props: ['density: compact', '#conversation-item', '#message: isEdited / edit / remove', '#typing-indicator', 'confirmDelete', 'stickToBottom: false'],
   },
 } satisfies Record<Variant, { number: string; title: string; description: string; props: string[] }>
 
@@ -48,8 +50,52 @@ const theme = computed(() => variant.value === 'branded' ? {
   primary: '#6d45a8', background: '#fbfaff', border: '#e5dff0', outgoingBubble: '#6d45a8',
 } : {})
 
+/** The rows every chat view renders and the edit in progress: fixture state the controlled views are pure
+ * functions of (replaced, never mutated, hence `shallowRef`). A real app keeps the same shape; the library's
+ * `Conversation` wraps it in `useConversation`.
+ */
+const rows = shallowRef<Message[]>([...messages])
+const editingMessage = shallowRef<Message | null>(null)
+
+/** `onEditMessage`: the view enters edit mode; the composer prefills with the row's text and saves instead of sending. */
+function startEditing(message: Message) {
+  editingMessage.value = message
+}
+
+function cancelEditing() {
+  editingMessage.value = null
+}
+
+/** `onSaveEdit`: what the backend does with `editMessage(message.id, { text, revision: message.revision })`, locally.
+ * The trimmed text replaces the caption (`null` clears the caption of a message with attachments; the view never
+ * saves an empty text-only message), the attachments stay and `revision` moves up by one, so the row reads `Edited`.
+ */
+function saveEdit(message: Message, text: string) {
+  rows.value = rows.value.map((row) => row.id === message.id
+    ? { ...row, text: text || null, revision: row.revision + 1, updatedAt: new Date() }
+    : row)
+  editingMessage.value = null
+  return true
+}
+
+/** `onDeleteMessage`: the row is gone for every member; the views ask first (inline prompt or `confirmDelete`).
+ * Deleting the row being edited ends the edit too (the library's store does the same), so the composer never keeps
+ * a banner, prefilled text and Save for a message that no longer exists.
+ */
+function deleteMessage(message: Message) {
+  rows.value = rows.value.filter((row) => row.id !== message.id)
+  if (editingMessage.value?.id === message.id) editingMessage.value = null
+  return true
+}
+
+/** `confirmDelete` for the compact view: replaces the package's inline prompt and confirms a custom row's `remove()`. */
+function confirmDelete(message: Message) {
+  return window.confirm(`Delete "${message.text ?? 'this message'}"?`)
+}
+
 function chooseVariant(next: Variant) {
   variant.value = next
+  editingMessage.value = null
   const url = new URL(window.location.href)
   url.searchParams.set('variant', next)
   window.history.replaceState({}, '', url)
@@ -59,7 +105,7 @@ function formatTime(date: Date) {
   return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
-function messageStatus(message: (typeof messages)[number]) {
+function messageStatus(message: Message) {
   return isConvoKitPendingMessage(message) ? 'Sending…' : formatTime(message.createdAt)
 }
 
@@ -162,24 +208,34 @@ function isUnread(summary: InboxSummary | undefined) {
           <ConversationView
             v-if="variant === 'standard'"
             :conversation="selected"
-            :messages="messages"
+            :messages="rows"
             current-user-id="maya"
             :read-at-by-user-id="readAtByUserId"
             :typing-user-ids="typing"
             :on-send-message="() => true"
             :on-refresh="() => undefined"
             :on-add-attachment="() => undefined"
+            :editing-message="editingMessage"
+            :on-edit-message="startEditing"
+            :on-save-edit="saveEdit"
+            :on-cancel-edit="cancelEditing"
+            :on-delete-message="deleteMessage"
             :format-time="formatTime"
           />
           <ConversationView
             v-else-if="variant === 'branded'"
             :conversation="selected"
-            :messages="messages"
+            :messages="rows"
             current-user-id="maya"
             :read-at-by-user-id="readAtByUserId"
             :typing-user-ids="typing"
             :on-send-message="() => true"
             :on-add-attachment="() => undefined"
+            :editing-message="editingMessage"
+            :on-edit-message="startEditing"
+            :on-save-edit="saveEdit"
+            :on-cancel-edit="cancelEditing"
+            :on-delete-message="deleteMessage"
             :format-time="formatTime"
           >
             <template #header>
@@ -194,25 +250,46 @@ function isUnread(summary: InboxSummary | undefined) {
               <span class="branded-receipt"><CheckCheck :size="12" /> Read by {{ slotProps.readerIds.size ? 'Alex Rivera' : 'nobody yet' }}</span>
             </template>
             <template #composer="slotProps">
-              <div class="branded-composer"><button type="button" aria-label="Attach" @click="slotProps.addAttachment"><Paperclip /></button><input :value="slotProps.value" placeholder="Reply to customer…" @input="slotProps.setValue(($event.target as HTMLInputElement).value)"><button type="button" @click="slotProps.send">Send</button></div>
+              <div class="branded-composer" :data-editing="slotProps.editing ? '' : undefined">
+                <p v-if="slotProps.editing" class="branded-composer__editing" role="status"><Pencil :size="13" /><span><strong>Editing message</strong> {{ slotProps.editing.text ?? `${slotProps.editing.media.length} attachment(s)` }}</span><button type="button" aria-label="Cancel editing" @click="slotProps.cancelEdit">Cancel</button></p>
+                <div><button type="button" aria-label="Attach" @click="slotProps.addAttachment"><Paperclip /></button><input :value="slotProps.value" :placeholder="slotProps.editing ? 'Edit your message…' : 'Reply to customer…'" @input="slotProps.setValue(($event.target as HTMLInputElement).value)"><button type="button" @click="slotProps.send">{{ slotProps.editing ? 'Save' : 'Send' }}</button></div>
+              </div>
             </template>
           </ConversationView>
           <ConversationView
             v-else
             :conversation="selected"
-            :messages="messages"
+            :messages="rows"
             current-user-id="maya"
             :read-at-by-user-id="readAtByUserId"
             :typing-user-ids="typing"
             :on-send-message="() => true"
+            :editing-message="editingMessage"
+            :on-edit-message="startEditing"
+            :on-save-edit="saveEdit"
+            :on-cancel-edit="cancelEditing"
+            :on-delete-message="deleteMessage"
+            :confirm-delete="confirmDelete"
             density="compact"
             :reverse-messages="false"
             :stick-to-bottom="false"
           >
             <template #header><header class="compact-header"><ArrowLeft /><strong>{{ selected.displayTitle }}</strong><span>Live</span></header></template>
-            <template #message="slotProps"><div class="compact-message"><strong>{{ slotProps.isCurrentUser ? 'You' : slotProps.sender?.name.split(' ')[0] }}</strong><span>{{ slotProps.message.text }}</span><time>{{ messageStatus(slotProps.message) }}</time></div></template>
+            <template #message="slotProps">
+              <div class="compact-message" :data-editing="editingMessage?.id === slotProps.message.id ? '' : undefined">
+                <strong>{{ slotProps.isCurrentUser ? 'You' : slotProps.sender?.name.split(' ')[0] }}</strong>
+                <span>{{ slotProps.message.text }}<em v-if="slotProps.isEdited" class="compact-message__edited">Edited</em></span>
+                <time>{{ messageStatus(slotProps.message) }}</time>
+                <span v-if="slotProps.edit || slotProps.remove" class="compact-message__actions"><button v-if="slotProps.edit" type="button" aria-label="Edit message" @click="slotProps.edit"><Pencil /></button><button v-if="slotProps.remove" type="button" aria-label="Delete message" @click="slotProps.remove"><Trash2 /></button></span>
+              </div>
+            </template>
             <template #typing-indicator><div class="compact-typing">Jordan Lee is responding…</div></template>
-            <template #composer="slotProps"><div class="compact-composer"><input :value="slotProps.value" placeholder="Message" @input="slotProps.setValue(($event.target as HTMLInputElement).value)"><button type="button" aria-label="Send" @click="slotProps.send"><Send /></button></div></template>
+            <template #composer="slotProps">
+              <div class="compact-composer" :data-editing="slotProps.editing ? '' : undefined">
+                <p v-if="slotProps.editing" class="compact-composer__editing" role="status"><span>Editing message</span><button type="button" aria-label="Cancel editing" @click="slotProps.cancelEdit">Cancel</button></p>
+                <div><input :value="slotProps.value" :placeholder="slotProps.editing ? 'Edit message' : 'Message'" @input="slotProps.setValue(($event.target as HTMLInputElement).value)"><button type="button" :aria-label="slotProps.editing ? 'Save' : 'Send'" @click="slotProps.send"><Check v-if="slotProps.editing" /><Send v-else /></button></div>
+              </div>
+            </template>
           </ConversationView>
         </article>
       </section>

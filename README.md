@@ -9,17 +9,23 @@ Vue UI package and the core [`@convokitapp/sdk`](https://www.npmjs.com/package/@
 
 ## Live open-chatroom demo
 
-This example consumes the published 0.7.0 core and UI packages. The SDK-backed
+This example consumes the published 0.8.0 core and UI packages. The SDK-backed
 conversation list pages the inbox in activity order and renders each room's
 latest-message preview, activity time and unread badge by itself, refreshing on
 room/membership changes and on new activity. A room you mark unread shows a
 numberless dot (never an invented count) that only you can see; the room bar's
 "Mark unread" button calls the list controller's `markUnread(conversationId)`,
 and reopening the room clears the marker through the chat view's own
-acknowledgement, which carries the version captured when the room opened. The
-chat view replaces pending messages when their matching live/history
-confirmation arrives. No demo-side polling, preview or unread bookkeeping, text
-matching or duplicate-bubble workaround is required.
+acknowledgement, which carries the version captured when the room opened. Your
+own messages carry the package's "Edit message" and "Delete message" actions
+(revealed on hover or focus with a mouse, always visible on touch); editing
+turns the composer into edit mode with the message text, saves with the
+`revision` you saw and shows "Edited" beside the time for every member, while a
+conflicting edit from another device is reported and keeps your draft.
+Deleting asks first, then removes the row for every member. The chat view
+replaces pending messages when their matching live/history confirmation
+arrives. No demo-side polling, preview or unread bookkeeping, text matching,
+edit or revision bookkeeping, or duplicate-bubble workaround is required.
 
 [Open the Vue demo](https://convokit-vue-demo.vercel.app). It uses the same backend, demo personas and
 room IDs as the [Flutter demo](https://convokit-open-chatroom.vercel.app).
@@ -34,6 +40,12 @@ required to try the shared demo.
   at once, another device signed in as the same user picks it up from the
   activity signal, and other members never see it. Open the room again to
   clear it.
+- Hover or focus one of your own messages and press "Edit message" or "Delete
+  message". Edits keep the attachments (an empty caption clears it), show
+  "Edited" on every device without a reload, and a stale edit (the message
+  changed elsewhere first) is reported while your text stays in the composer;
+  save again to apply it over the fresh copy. Deleting cannot be undone; files
+  other members already received are not retracted.
 - Reload restores the user and selected room. Switch user ends that SDK session.
 - The inbox and chat are the published UI package's components/controllers.
   App code only supplies branding, the demo identity/room flow and upload/download hooks.
@@ -63,6 +75,11 @@ Web-native, shadcn-inspired package defaults plus inbox previews and unread
 badges from `summaries`/`currentUserId` (a count, `99+` when capped, or the
 package's numberless dot for a room marked unread with nothing new), refresh,
 attachment, read-position, image/file rendering, and bottom-anchored messages.
+The fixture rows carry `revision` (one is edited, so the default row shows its
+"Edited" label), and the controlled view receives `editingMessage`,
+`onEditMessage`, `onSaveEdit`, `onCancelEdit` and `onDeleteMessage` backed by
+local fixture state, so the package's row actions, inline delete prompt and
+composer edit mode are all live in the showcase.
 
 ### Branded customer support
 
@@ -72,6 +89,9 @@ A restrained product-branded support workspace built with the `conversation-item
 `media`, `read-receipt`, and `composer` named slots. The custom rows read the
 `summary` and `currentUserId` slot props for their preview line, unread count
 and, from `summary.isUnread`, their own dot for a marked room without a count.
+The custom composer reads the `editing` and `cancelEdit` slot props for its
+"Editing message" banner and Cancel button; its Send button calls the same
+`send`, which saves while a message is being edited.
 
 ### Compact operations
 
@@ -79,7 +99,10 @@ and, from `summary.isUnread`, their own dot for a marked room without a count.
 
 A dense dashboard built with `density="compact"`, custom rows with unread
 badges and the mark-unread dot, message lines, typing state, composer, and
-`stick-to-bottom="false"`.
+`stick-to-bottom="false"`. The custom message lines read the `isEdited`, `edit`
+and `remove` slot props for their own "Edited" marker and Edit/Delete buttons
+(present only on the viewer's own confirmed rows), and the view's
+`confirmDelete` replaces the package's inline prompt with a dialog.
 
 The complete configuration is in [`src/ShowcaseApp.vue`](src/ShowcaseApp.vue).
 
