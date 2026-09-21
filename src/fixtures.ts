@@ -1,4 +1,4 @@
-import type { Conversation, Message } from '@convokitapp/sdk'
+import type { Conversation, InboxSummary, Message } from '@convokitapp/sdk'
 
 const participants = [
   {
@@ -112,4 +112,67 @@ export const messages: Message[] = [
 export const readAtByUserId = new Map([
   ['alex', new Date('2026-08-26T11:30:00Z')],
   ['jordan', new Date('2026-08-26T11:28:00Z')],
+])
+
+/** The viewer of every showcase surface; the list reads its own messages as `You: …`. */
+export const currentUserId = 'maya'
+
+/** Per-room inbox rows as `listInbox` returns them (the newest surviving message, unread count and read state). */
+export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, InboxSummary>([
+  ['product-launch', {
+    latestMessage: messages[3]!,
+    unreadCount: 0,
+    unreadCountCapped: false,
+    readPosition: { messageId: 'message-4', createdAt: new Date('2026-08-26T11:27:00Z') },
+    lastReadAt: new Date('2026-08-26T11:30:00Z'),
+    activityAt: new Date('2026-08-26T11:27:00Z'),
+  }],
+  ['customer-operations', {
+    latestMessage: {
+      id: 'message-5',
+      conversationId: 'customer-operations',
+      senderId: 'alex',
+      text: 'The customer is waiting on the refund confirmation.',
+      media: [],
+      createdAt: new Date('2026-08-26T11:26:00Z'),
+      updatedAt: null,
+    },
+    unreadCount: 2,
+    unreadCountCapped: false,
+    readPosition: null,
+    lastReadAt: new Date('2026-08-26T10:40:00Z'),
+    activityAt: new Date('2026-08-26T11:26:00Z'),
+  }],
+  ['design-review', {
+    latestMessage: {
+      id: 'message-6',
+      conversationId: 'design-review',
+      senderId: 'jordan',
+      text: null,
+      media: [{ id: 'image-2', type: 'image', name: 'settings-panel.png', url: '/launch-board.svg', size: 92160 }],
+      createdAt: new Date('2026-08-26T11:25:00Z'),
+      updatedAt: null,
+    },
+    unreadCount: 1,
+    unreadCountCapped: false,
+    readPosition: null,
+    lastReadAt: new Date('2026-08-26T09:15:00Z'),
+    activityAt: new Date('2026-08-26T11:25:00Z'),
+  }],
+  ['incident-room', {
+    latestMessage: {
+      id: 'message-7',
+      conversationId: 'incident-room',
+      senderId: 'alex',
+      text: 'Paging the on-call engineer now.',
+      media: [],
+      createdAt: new Date('2026-08-26T11:24:00Z'),
+      updatedAt: null,
+    },
+    unreadCount: 120,
+    unreadCountCapped: false,
+    readPosition: null,
+    lastReadAt: null,
+    activityAt: new Date('2026-08-26T11:24:00Z'),
+  }],
 ])

@@ -9,10 +9,13 @@ Vue UI package and the core [`@convokitapp/sdk`](https://www.npmjs.com/package/@
 
 ## Live open-chatroom demo
 
-This example consumes the published 0.5.0 core and UI packages. The UI library
-automatically refreshes inboxes on room/membership changes and replaces pending
+This example consumes the published 0.6.0 core and UI packages. The SDK-backed
+conversation list pages the inbox in activity order and renders each room's
+latest-message preview, activity time and unread badge by itself, refreshing on
+room/membership changes and on new activity. The chat view replaces pending
 messages when their matching live/history confirmation arrives. No demo-side
-polling, text matching or duplicate-bubble workaround is required.
+polling, preview or unread bookkeeping, text matching or duplicate-bubble
+workaround is required.
 
 [Open the Vue demo](https://convokit-vue-demo.vercel.app). It uses the same backend, demo personas and
 room IDs as the [Flutter demo](https://convokit-open-chatroom.vercel.app).
@@ -48,22 +51,24 @@ Use the selector to compare configurations, or open `?variant=standard`,
 
 ![Standard ConvoKit Vue conversation list and chat components](doc/screenshots/standard-components.png)
 
-Web-native, shadcn-inspired package defaults plus refresh, attachment,
-read-position, image/file rendering, and bottom-anchored messages.
+Web-native, shadcn-inspired package defaults plus inbox previews and unread
+badges from `summaries`/`currentUserId`, refresh, attachment, read-position,
+image/file rendering, and bottom-anchored messages.
 
 ### Branded customer support
 
 ![Branded ConvoKit Vue customer support interface](doc/screenshots/branded-support.png)
 
 A restrained product-branded support workspace built with the `conversation-item`, `header`,
-`media`, `read-receipt`, and `composer` named slots.
+`media`, `read-receipt`, and `composer` named slots. The custom rows read the
+`summary` and `currentUserId` slot props for their preview line and unread count.
 
 ### Compact operations
 
 ![Compact ConvoKit Vue operations interface](doc/screenshots/compact-operations.png)
 
-A dense dashboard built with `density="compact"`, custom rows, message lines,
-typing state, composer, and `stick-to-bottom="false"`.
+A dense dashboard built with `density="compact"`, custom rows with unread
+badges, message lines, typing state, composer, and `stick-to-bottom="false"`.
 
 The complete configuration is in [`src/ShowcaseApp.vue`](src/ShowcaseApp.vue).
 

@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import type { MessageMedia } from '@convokitapp/sdk'
+import type { InboxSummary, MessageMedia } from '@convokitapp/sdk'
 import {
   ConversationListView,
   ConversationView,
   ConvoKitThemeProvider,
   isConvoKitPendingMessage,
+  type ConversationItemSlotProps,
 } from '@convokitapp/vue-ui'
 import { ArrowLeft, Bot, CheckCheck, Circle, Headphones, Paperclip, Send, Ticket, Users } from '@lucide/vue'
 import { computed, ref } from 'vue'
-import { conversations, messages, readAtByUserId } from './fixtures'
+import { conversations, currentUserId, messages, readAtByUserId, summaries } from './fixtures'
 
 type Variant = 'standard' | 'branded' | 'compact'
 const variants: Array<{ id: Variant; label: string }> = [
@@ -19,8 +20,8 @@ const variants: Array<{ id: Variant; label: string }> = [
 const details = {
   standard: {
     number: '1', title: 'Standard components',
-    description: 'Neutral, shadcn-inspired defaults for lists, messages, receipts, media and the composer.',
-    props: ['onRefresh', 'onAddAttachment', 'readAtByUserId', 'reverseMessages: true'],
+    description: 'Neutral, shadcn-inspired defaults for inbox rows, messages, receipts, media and the composer.',
+    props: ['summaries', 'currentUserId', 'onRefresh', 'onAddAttachment', 'readAtByUserId', 'reverseMessages: true'],
   },
   branded: {
     number: '2', title: 'Branded customer support',
@@ -65,6 +66,19 @@ function messageStatus(message: (typeof messages)[number]) {
 function ticketLabel(media: MessageMedia) {
   return media.type === 'contact' ? media.metadata.email : ''
 }
+
+/** Custom rows read the same `summary` the default rows render; the viewer's own messages read `You: …`. */
+function preview({ summary, currentUserId: viewer }: ConversationItemSlotProps) {
+  const message = summary?.latestMessage
+  if (!message) return 'No messages yet'
+  const body = message.text ?? (message.media[0]?.type === 'image' ? 'Photo' : message.media[0]?.name ?? 'Attachment')
+  return message.senderId === viewer ? `You: ${body}` : body
+}
+
+function unreadLabel(summary: InboxSummary | undefined) {
+  if (!summary || (summary.unreadCount <= 0 && !summary.unreadCountCapped)) return ''
+  return summary.unreadCountCapped || summary.unreadCount > 99 ? '99+' : String(summary.unreadCount)
+}
 </script>
 
 <template>
@@ -93,33 +107,39 @@ function ticketLabel(media: MessageMedia) {
           <ConversationListView
             v-if="variant === 'standard'"
             :conversations="conversations"
+            :summaries="summaries"
+            :current-user-id="currentUserId"
             :selected-conversation-id="selected.id"
             :on-conversation-select="() => undefined"
           />
           <ConversationListView
             v-else-if="variant === 'branded'"
             :conversations="conversations"
+            :summaries="summaries"
+            :current-user-id="currentUserId"
             :selected-conversation-id="selected.id"
             :on-conversation-select="() => undefined"
           >
             <template #conversation-item="slotProps">
               <button type="button" class="branded-row" :data-selected="slotProps.selected || undefined" @click="slotProps.select">
                 <span class="branded-row__avatar">{{ slotProps.conversation.displayTitle[0] }}</span>
-                <span><strong>{{ slotProps.conversation.displayTitle }}</strong><small>{{ slotProps.index === 0 ? 'Waiting for your reply' : 'Last reply today' }}</small></span>
-                <b v-if="slotProps.index === 0">2</b>
+                <span><strong>{{ slotProps.conversation.displayTitle }}</strong><small>{{ preview(slotProps) }}</small></span>
+                <b v-if="unreadLabel(slotProps.summary)">{{ unreadLabel(slotProps.summary) }}</b>
               </button>
             </template>
           </ConversationListView>
           <ConversationListView
             v-else
             :conversations="conversations"
+            :summaries="summaries"
+            :current-user-id="currentUserId"
             :selected-conversation-id="selected.id"
             :on-conversation-select="() => undefined"
             density="compact"
           >
             <template #conversation-item="slotProps">
               <button type="button" class="compact-row" @click="slotProps.select">
-                <span>{{ slotProps.conversation.displayTitle[0] }}</span><strong>{{ slotProps.conversation.displayTitle }}</strong><Circle v-if="slotProps.selected" fill="currentColor" :size="7" />
+                <span>{{ slotProps.conversation.displayTitle[0] }}</span><strong>{{ slotProps.conversation.displayTitle }}</strong><b v-if="unreadLabel(slotProps.summary)">{{ unreadLabel(slotProps.summary) }}</b><Circle v-if="slotProps.selected" fill="currentColor" :size="7" />
               </button>
             </template>
           </ConversationListView>

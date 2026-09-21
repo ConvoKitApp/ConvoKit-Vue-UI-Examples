@@ -67,10 +67,11 @@ button { color: inherit; }
 .branded-composer button:first-child { width: 36px; color: #6f6878; }
 .branded-composer button:last-child { padding: 7px 15px; background: #6d45a8; color: #fff; font-size: 12px; font-weight: 600; }
 
-.compact-row { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; align-items: center; gap: 8px; width: 100%; min-height: 38px; padding: 5px 8px; border: 0; border-bottom: 1px solid #e4e4e7; background: #fff; text-align: left; cursor: pointer; }
+.compact-row { display: grid; grid-template-columns: 26px minmax(0,1fr); grid-auto-flow: column; grid-auto-columns: max-content; align-items: center; gap: 8px; width: 100%; min-height: 38px; padding: 5px 8px; border: 0; border-bottom: 1px solid #e4e4e7; background: #fff; text-align: left; cursor: pointer; }
 .compact-row:hover { background: #fafafa; }
 .compact-row > span { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid #e4e4e7; border-radius: 6px; background: #f4f4f5; color: #52525b; font-size: 9px; }
 .compact-row strong { font-size: 11px; font-weight: 600; }
+.compact-row b { display: grid; min-width: 18px; height: 18px; padding-inline: 4px; place-items: center; border-radius: 5px; background: #18181b; color: #fff; font-size: 9px; }
 .compact-row > svg { color: #16a34a; }
 .compact-header { display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 7px 11px; border-bottom: 1px solid #e4e4e7; background: #fff; }
 .compact-header strong { flex: 1; font-size: 12px; }
