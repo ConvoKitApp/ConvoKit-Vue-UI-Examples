@@ -139,7 +139,7 @@ async function markUnread() {
             and Flutter.
           </p>
           <div class="demo-feature-tags">
-            <span>Live messages</span><span>Images &amp; files</span><span>Read receipts</span><span>Mark unread</span><span>Edit &amp; delete</span>
+            <span>Live messages</span><span>Images &amp; files</span><span>Read receipts</span><span>Mark unread</span><span>Edit &amp; delete</span><span>Quoted replies</span>
           </div>
         </div>
         <form class="demo-login-card" @submit.prevent="model.connect(userId)">
@@ -215,7 +215,7 @@ async function markUnread() {
               @conversation-select="selectRoom($event.id)"
             />
             <div class="demo-sidebar-footer">
-              <span class="status-dot" />{{ state.status }}<span>UI SDK 0.8.0</span>
+              <span class="status-dot" />{{ state.status }}<span>UI SDK 0.9.0</span>
             </div>
           </aside>
           <section class="demo-chat-panel" aria-label="Chat workspace">

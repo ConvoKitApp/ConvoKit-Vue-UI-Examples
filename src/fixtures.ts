@@ -47,9 +47,29 @@ export const conversations: Conversation[] = [
   updatedAt: new Date(`2026-08-26T11:${27 - index}:00Z`),
 }))
 
-/** Rows as `getMessages` returns them (0.8.0 adds `revision`: 0 when sent, +1 per edit). One row is edited so the
- * package's `Edited` label renders; the viewer's own confirmed rows (`maya`) are the ones the views let her edit or
- * delete. `revision`, never `updatedAt`, is the edited signal.
+/** Rows older than the page the showcase opens with: history the room has but the loaded window does not. A quoted
+ * reply pointing here is what a jump has to load (0.9.0), the way the package's own store loads one window with
+ * `getMessageContext` instead of paging back to the message.
+ */
+export const olderMessages: Message[] = [
+  {
+    id: 'message-0',
+    conversationId: 'product-launch',
+    senderId: 'alex',
+    text: 'Kickoff notes: we ship on the 4th and freeze the pricing page on the 1st.',
+    media: [],
+    createdAt: new Date('2026-08-26T10:52:00Z'),
+    updatedAt: null,
+    revision: 0,
+  },
+]
+
+/** Rows as `getMessages` returns them (0.8.0 adds `revision`: 0 when sent, +1 per edit; 0.9.0 adds the optional
+ * `replyToMessageId`). One row is edited so the package's `Edited` label renders; the viewer's own confirmed rows
+ * (`maya`) are the ones the views let her edit or delete, while any member may quote any row. `revision`, never
+ * `updatedAt`, is the edited signal. Three rows are replies: one quotes a row in this page, one quotes
+ * `message-0` (outside it, so the quoted block has to jump), and one quotes a message that was deleted since —
+ * the reference survives the deletion and the quoted block reads `Original message unavailable`.
  */
 export const messages: Message[] = [
   {
@@ -116,6 +136,43 @@ export const messages: Message[] = [
     updatedAt: null,
     revision: 0,
   },
+  {
+    id: 'message-8',
+    conversationId: 'product-launch',
+    senderId: 'alex',
+    // The quoted parent is in this page, so the showcase resolves its preview without leaving the window. It is
+    // also one of the viewer's own rows, so editing or deleting it shows what happens to a quote of it.
+    replyToMessageId: 'message-2',
+    text: 'That matches the checklist, thanks.',
+    media: [],
+    createdAt: new Date('2026-08-26T11:29:00Z'),
+    updatedAt: null,
+    revision: 0,
+  },
+  {
+    id: 'message-9',
+    conversationId: 'product-launch',
+    senderId: 'jordan',
+    // The quoted parent is older than this page: opening the quote loads the window around it.
+    replyToMessageId: 'message-0',
+    text: 'Still tracking those kickoff dates, nothing has moved.',
+    media: [],
+    createdAt: new Date('2026-08-26T11:31:00Z'),
+    updatedAt: null,
+    revision: 0,
+  },
+  {
+    id: 'message-10',
+    conversationId: 'product-launch',
+    senderId: 'maya',
+    // The quoted message was deleted after this reply was sent: the reference is kept, the quote cannot resolve.
+    replyToMessageId: 'message-deleted',
+    text: 'Ignore the draft I deleted, this thread has the current plan.',
+    media: [],
+    createdAt: new Date('2026-08-26T11:33:00Z'),
+    updatedAt: null,
+    revision: 0,
+  },
 ]
 
 export const readAtByUserId = new Map([
@@ -133,15 +190,15 @@ export const currentUserId = 'maya'
  */
 export const summaries: ReadonlyMap<string, InboxSummary> = new Map<string, InboxSummary>([
   ['product-launch', {
-    latestMessage: messages[3]!,
+    latestMessage: messages.at(-1)!,
     unreadCount: 0,
     unreadCountCapped: false,
-    readPosition: { messageId: 'message-4', createdAt: new Date('2026-08-26T11:27:00Z') },
-    lastReadAt: new Date('2026-08-26T11:30:00Z'),
+    readPosition: { messageId: 'message-10', createdAt: new Date('2026-08-26T11:33:00Z') },
+    lastReadAt: new Date('2026-08-26T11:34:00Z'),
     isUnread: false,
     unreadMarkedAt: null,
     privateStateVersion: 0,
-    activityAt: new Date('2026-08-26T11:27:00Z'),
+    activityAt: new Date('2026-08-26T11:33:00Z'),
   }],
   ['customer-operations', {
     latestMessage: {

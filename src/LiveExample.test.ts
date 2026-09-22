@@ -1,25 +1,57 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import type { ConvoKitClient, EditMessageInput, Message } from '@convokitapp/sdk'
+import type {
+  ConvoKitClient, EditMessageInput, Message, MessageContextOptions, MessageContextPage, ReplyPreview,
+} from '@convokitapp/sdk'
 import * as uiLibrary from '@convokitapp/vue-ui'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LiveExample from './LiveExample.vue'
 import LiveConversation from './LiveConversation.vue'
 import { DemoModel } from './demo'
-import { conversations, messages, summaries } from './fixtures'
+import { conversations, messages, olderMessages, summaries } from './fixtures'
 
 vi.mock('@convokitapp/vue-ui', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@convokitapp/vue-ui')>()
   return { ...actual, createConvoKitUiClient: vi.fn(actual.createConvoKitUiClient) }
 })
 
+/** The room's history behind the page `getMessages` returns, so the reply fakes can answer for a quoted message
+ * the loaded window does not hold.
+ */
+const history = [...olderMessages, ...messages]
+
 /** A legacy-shaped adapter (the list falls back to `getConversations`). `inbox: true` adds the optional 0.6/0.7
  * members, so the list pages the fixture summaries and can mark a room unread through the published controller;
  * `edits: true` adds the optional 0.8 members, so the room's default rows offer the viewer's own messages for editing
- * and deletion. The edit fake answers like the backend: the new text and the revision moved up by one.
+ * and deletion; `replies: true` adds the optional 0.9 members, so quoted parents resolve and a quote outside the
+ * loaded window can be jumped to. Every one of them is optional on `ConvoKitUiClient`, which is what lets this
+ * object literal keep compiling as the package grows. The fakes answer like the backend: the edit returns the new
+ * text with the revision moved up by one, the preview batch simply leaves out ids that no longer exist, and the
+ * context window comes back newest-first with a cursor at each end that still has rows.
  */
-function fakeUiClient(options: { inbox?: boolean; edits?: boolean } = {}): uiLibrary.ConvoKitUiClient {
+function fakeUiClient(options: { inbox?: boolean; edits?: boolean; replies?: boolean } = {}): uiLibrary.ConvoKitUiClient {
   const subscription = () => ({ closed: false, unsubscribe: vi.fn(async () => undefined) })
   return {
+    ...(options.replies ? {
+      getReplyPreviews: vi.fn(async (_conversationId: string, messageIds: string[]): Promise<ReplyPreview[]> =>
+        messageIds.flatMap((messageId) => {
+          const parent = history.find((message) => message.id === messageId)
+          return parent ? [{
+            id: parent.id, conversationId: parent.conversationId, senderId: parent.senderId, text: parent.text,
+            textTruncated: false, createdAt: parent.createdAt, revision: parent.revision,
+            mediaCount: parent.media.length,
+          }] : []
+        })),
+      getMessageContext: vi.fn(async (_conversationId: string, input: MessageContextOptions): Promise<MessageContextPage> => {
+        const index = history.findIndex((message) => message.id === input.messageId)
+        const start = Math.max(0, index - 1)
+        const window = history.slice(start, start + 3)
+        return {
+          messages: [...window].reverse(),
+          olderCursor: window[0]!.id === history[0]!.id ? null : 'older-page',
+          newerCursor: window.at(-1)!.id === history.at(-1)!.id ? null : 'newer-page',
+        }
+      }),
+    } : {}),
     ...(options.edits ? {
       editMessage: vi.fn(async (messageId: string, input: EditMessageInput) => ({
         ...messages.find((message) => message.id === messageId)!,
@@ -57,6 +89,9 @@ function fakeUiClient(options: { inbox?: boolean; edits?: boolean } = {}): uiLib
     onTyping: subscription,
   }
 }
+
+/** jsdom implements no scroll method; the package centres the row a jump landed on with `scrollIntoView`. */
+Element.prototype.scrollIntoView = vi.fn()
 
 beforeEach(() => localStorage.clear())
 afterEach(() => vi.restoreAllMocks())
@@ -165,10 +200,21 @@ describe('Vue live demo', () => {
     const rowOf = (id: string) => wrapper.find(`[data-message-id="${id}"]`)
     try {
       await flushPromises()
-      // The package's default rows: `Edited` from `revision`, actions only on the viewer's own confirmed rows.
+      // A 0.8-shaped adapter has no `getReplyPreviews`, so a quoted parent stays in the third state — "not
+      // resolved yet": the reference renders with no quoted text, never the unavailable copy, and with no jump
+      // affordance either, because `getMessageContext` is missing too.
+      const unresolved = rowOf('message-9').get('.ckui-message-quote')
+      expect(unresolved.attributes('data-reply-to')).toBe('message-0')
+      expect(unresolved.attributes('aria-label')).toBe('Quoted message')
+      expect(unresolved.text()).toBe('')
+      expect(unresolved.classes()).not.toContain('ckui-message-quote--unavailable')
+      expect(unresolved.element.tagName).toBe('DIV')
+      // The package's default rows: `Edited` from `revision`, editing and deletion only on the viewer's own
+      // confirmed rows (the 0.9 reply action, which needs no adapter member, is on every one of them).
       expect(rowOf('message-2').find('.ckui-message-edited').text()).toBe('Edited')
-      expect(rowOf('message-1').find('.ckui-message-actions').exists()).toBe(false)
-      expect(rowOf('message-3').find('.ckui-message-actions').exists()).toBe(false)
+      expect(rowOf('message-1').find('[aria-label="Edit message"]').exists()).toBe(false)
+      expect(rowOf('message-1').find('[aria-label="Delete message"]').exists()).toBe(false)
+      expect(rowOf('message-3').find('[aria-label="Edit message"]').exists()).toBe(false)
       expect(rowOf('message-4').find('[aria-label="Edit message"]').exists()).toBe(true)
       await rowOf('message-4').get('[aria-label="Edit message"]').trigger('click')
       await flushPromises()
@@ -194,6 +240,51 @@ describe('Vue live demo', () => {
       await flushPromises()
       expect(ui.deleteMessage).toHaveBeenCalledExactlyOnceWith('message-4')
       expect(rowOf('message-4').exists()).toBe(false)
+      expect(wrapper.find('.demo-error').exists()).toBe(false)
+    } finally {
+      wrapper.unmount()
+    }
+  })
+  it('resolves quoted replies, jumps to a quoted message and sends the quote through the 0.9 adapter members', async () => {
+    const ui = fakeUiClient({ replies: true })
+    vi.mocked(ui.getMessages).mockResolvedValue([...messages].reverse())
+    const wrapper = mount(LiveConversation, {
+      props: { ui, sdk: {} as ConvoKitClient, roomId: 'product-launch' }, attachTo: document.body,
+    })
+    const rowOf = (id: string) => wrapper.find(`[data-message-id="${id}"]`)
+    try {
+      await flushPromises()
+      // ONE request for the quoted parents the loaded page cannot derive, never one per row: `message-2` is on
+      // screen, so the room controller resolves it locally and only asks about the two that are not.
+      expect(ui.getReplyPreviews).toHaveBeenCalledExactlyOnceWith('product-launch', ['message-0', 'message-deleted'])
+      expect(rowOf('message-8').get('.ckui-message-quote').text()).toContain('Great. I approved the copy')
+      expect(rowOf('message-9').get('.ckui-message-quote').text()).toContain('Kickoff notes')
+      // An id a resolved batch left out is the only deletion signal: the reference stays, the quoted text goes.
+      expect(rowOf('message-10').get('.ckui-message-quote').text()).toBe('Original message unavailable')
+      // The quoted message is outside the loaded window, so opening the quote loads the window around it.
+      await rowOf('message-9').get('.ckui-message-quote').trigger('click')
+      await flushPromises()
+      expect(ui.getMessageContext).toHaveBeenCalledExactlyOnceWith('product-launch', { messageId: 'message-0', limit: 30 })
+      expect(rowOf('message-0').exists()).toBe(true)
+      expect(rowOf('message-0').classes()).toContain('ckui-message-highlight')
+      expect(document.activeElement).toBe(rowOf('message-0').element)
+      expect(rowOf('message-10').exists()).toBe(false)
+      // The window the jump loaded has newer rows past it, so the package offers the way back to the live tail.
+      await wrapper.get('[aria-label="Jump to latest messages"]').trigger('click')
+      await flushPromises()
+      expect(rowOf('message-10').exists()).toBe(true)
+      expect(rowOf('message-0').exists()).toBe(false)
+      expect(wrapper.find('[aria-label="Jump to latest messages"]').exists()).toBe(false)
+      // Quoting needs no adapter member: any confirmed row offers it, and the send carries the target.
+      await rowOf('message-1').get('[aria-label="Reply to message"]').trigger('click')
+      expect(wrapper.get('.ckui-composer__replying').text()).toContain('Replying to Alex Rivera')
+      await wrapper.get('textarea').setValue('Taking the checklist now.')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(ui.sendMessage).toHaveBeenCalledWith(expect.objectContaining({
+        conversationId: 'product-launch', text: 'Taking the checklist now.', replyToMessageId: 'message-1',
+      }))
+      expect(wrapper.find('.ckui-composer__replying').exists()).toBe(false)
       expect(wrapper.find('.demo-error').exists()).toBe(false)
     } finally {
       wrapper.unmount()
