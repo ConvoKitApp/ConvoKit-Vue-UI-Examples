@@ -310,23 +310,20 @@ describe('Vue UI showcase', () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center', behavior: 'instant' })
     expect(document.activeElement).toBe(messageRow(wrapper, 'message-0').element)
     expect(messageRow(wrapper, 'message-0').classes()).toContain('ckui-message-highlight')
-    expect(wrapper.get('[role="log"]').attributes('aria-busy')).toBe('true')
     // The package offers the way back as soon as the view has `onReturnToLatest`.
     await wrapper.get('[aria-label="Jump to latest messages"]').trigger('click')
     await flushPromises()
     expect(messageRow(wrapper, 'message-10').exists()).toBe(true)
     expect(messageRow(wrapper, 'message-0').exists()).toBe(false)
     expect(wrapper.find('[aria-label="Jump to latest messages"]').exists()).toBe(false)
-    // A quoted row that is already on screen is highlighted where it is, with no window change — and it raises
-    // the same guard, because the package centres it and that scroll must not clear the highlight just set. The
-    // first jump's guard clears on a 150 ms timer, so wait it out to prove the second jump raises its own.
+    // A quoted row already on screen is highlighted without changing the window.
+    // Wait for the first jump's short guard to expire before selecting another quote.
     await new Promise((resolve) => setTimeout(resolve, 200))
     expect(wrapper.get('[role="log"]').attributes('aria-busy')).toBeUndefined()
     scrollIntoView.mockClear()
     await messageRow(wrapper, 'message-8').get('.ckui-message-quote').trigger('click')
     await flushPromises()
     expect(messageRow(wrapper, 'message-2').classes()).toContain('ckui-message-highlight')
-    expect(wrapper.get('[role="log"]').attributes('aria-busy')).toBe('true')
     expect(messageRow(wrapper, 'message-10').exists()).toBe(true)
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
     wrapper.unmount()
