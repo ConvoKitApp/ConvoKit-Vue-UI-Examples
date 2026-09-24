@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { InboxSummary, Message, MessageMedia } from '@convokitapp/sdk'
+import type { InboxSummary, Message, MessageMedia, MessageReactionSummary, ReactionUsersPage } from '@convokitapp/sdk'
 import {
   ConversationListView,
   ConversationView,
+  ReactionBar,
   ConvoKitThemeProvider,
   isConvoKitPendingMessage,
   type ConversationItemSlotProps,
@@ -62,6 +63,32 @@ const history = shallowRef<Message[]>([...olderMessages, ...messages])
  * it in `useConversation`.
  */
 const rows = shallowRef<Message[]>([...messages])
+const reactionSummaries = shallowRef<ReadonlyMap<string, MessageReactionSummary>>(new Map([
+  [messages.at(-1)!.id, { messageId: messages.at(-1)!.id, reactions: [{ emoji: '❤️', count: 2, reactedByMe: false }], hasMore: false }],
+]))
+async function toggleReaction(message: Message, emoji: string): Promise<boolean> {
+  const next = new Map(reactionSummaries.value)
+  const previous = next.get(message.id)?.reactions ?? []
+  const found = previous.find((reaction) => reaction.emoji === emoji)
+  const reactions = found
+    ? previous.map((reaction) => reaction.emoji === emoji
+      ? { ...reaction, count: reaction.count + (reaction.reactedByMe ? -1 : 1), reactedByMe: !reaction.reactedByMe }
+      : reaction).filter((reaction) => reaction.count > 0)
+    : [...previous, { emoji, count: 1, reactedByMe: true }]
+  next.set(message.id, { messageId: message.id, reactions, hasMore: false })
+  reactionSummaries.value = next
+  return true
+}
+async function listReactionUsers(message: Message, emoji: string, cursor?: string): Promise<ReactionUsersPage> {
+  return {
+    data: cursor ? [] : [
+      ...(reactionSummaries.value.get(message.id)?.reactions.find((reaction) => reaction.emoji === emoji)?.reactedByMe
+        ? [{ userId: currentUserId, name: 'Maya Chen', imageUrl: null, reactedAt: new Date() }] : []),
+      { userId: 'alex', name: 'Alex Rivera', imageUrl: null, reactedAt: new Date() },
+    ],
+    nextCursor: null,
+  }
+}
 const editingMessage = shallowRef<Message | null>(null)
 const replyTarget = shallowRef<Message | null>(null)
 const windowMode = shallowRef<'live' | 'jumped'>('live')
@@ -122,6 +149,9 @@ function saveEdit(message: Message, text: string) {
  */
 function deleteMessage(message: Message) {
   patchRows((list) => list.filter((row) => row.id !== message.id))
+  const next = new Map(reactionSummaries.value)
+  next.delete(message.id)
+  reactionSummaries.value = next
   if (editingMessage.value?.id === message.id) editingMessage.value = null
   if (replyTarget.value?.id === message.id) replyTarget.value = null
   return true
@@ -401,6 +431,9 @@ function isUnread(summary: InboxSummary | undefined) {
             :on-delete-message="deleteMessage"
             :reply-target="replyTarget"
             :reply-preview-by-message-id="replyPreviews"
+            :reaction-summaries="reactionSummaries"
+            :on-toggle-reaction="toggleReaction"
+            :on-list-reaction-users="listReactionUsers"
             :highlighted-message-id="highlightedMessageId"
             :jump-in-flight="jumpInFlight"
             :has-newer-messages="hasNewerMessages"
@@ -427,6 +460,9 @@ function isUnread(summary: InboxSummary | undefined) {
             :on-delete-message="deleteMessage"
             :reply-target="replyTarget"
             :reply-preview-by-message-id="replyPreviews"
+            :reaction-summaries="reactionSummaries"
+            :on-toggle-reaction="toggleReaction"
+            :on-list-reaction-users="listReactionUsers"
             :highlighted-message-id="highlightedMessageId"
             :jump-in-flight="jumpInFlight"
             :has-newer-messages="hasNewerMessages"
@@ -474,6 +510,9 @@ function isUnread(summary: InboxSummary | undefined) {
             :confirm-delete="confirmDelete"
             :reply-target="replyTarget"
             :reply-preview-by-message-id="replyPreviews"
+            :reaction-summaries="reactionSummaries"
+            :on-toggle-reaction="toggleReaction"
+            :on-list-reaction-users="listReactionUsers"
             :highlighted-message-id="highlightedMessageId"
             :jump-in-flight="jumpInFlight"
             :has-newer-messages="hasNewerMessages"
@@ -495,6 +534,7 @@ function isUnread(summary: InboxSummary | undefined) {
                 <span>
                   <button v-if="slotProps.message.replyToMessageId" type="button" class="compact-message__quote" :data-unavailable="slotProps.replyPreview === 'unavailable' || undefined" :disabled="!slotProps.jumpToReplyTarget" @click="slotProps.jumpToReplyTarget?.()">{{ quoteLabel(slotProps.replyPreview) }}</button>
                   {{ slotProps.message.text }}<em v-if="slotProps.isEdited" class="compact-message__edited">Edited</em>
+                  <ReactionBar v-if="slotProps.reaction" :reaction="slotProps.reaction" />
                 </span>
                 <time>{{ messageStatus(slotProps.message) }}</time>
                 <span v-if="slotProps.reply || slotProps.edit || slotProps.remove" class="compact-message__actions"><button v-if="slotProps.reply" type="button" aria-label="Reply to message" @click="slotProps.reply"><Reply /></button><button v-if="slotProps.edit" type="button" aria-label="Edit message" @click="slotProps.edit"><Pencil /></button><button v-if="slotProps.remove" type="button" aria-label="Delete message" @click="slotProps.remove"><Trash2 /></button></span>
