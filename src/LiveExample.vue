@@ -215,7 +215,7 @@ async function markUnread() {
               @conversation-select="selectRoom($event.id)"
             />
             <div class="demo-sidebar-footer">
-              <span class="status-dot" />{{ state.status }}<span>UI SDK 0.10.0</span>
+              <span class="status-dot" />{{ state.status }}<span>UI SDK 0.10.1</span>
             </div>
           </aside>
           <section class="demo-chat-panel" aria-label="Chat workspace">
