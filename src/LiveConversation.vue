@@ -3,6 +3,7 @@ import type { ConvoKitClient } from '@convokitapp/sdk'
 import { Conversation, type ConversationController, type ConvoKitUiClient } from '@convokitapp/vue-ui'
 import { onBeforeUnmount, ref } from 'vue'
 import { downloadAttachment, errorMessage, uploadAttachment } from './demo'
+import ReadReceiptAvatars from './ReadReceiptAvatars.vue'
 
 const props = defineProps<{ sdk: ConvoKitClient; ui: ConvoKitUiClient; roomId: string }>()
 const emit = defineEmits<{ back: [] }>()
@@ -63,6 +64,10 @@ async function attach(event: Event) {
       :format-time="(date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })"
       @controller-change="setController"
       @back="emit('back')"
-    />
+    >
+      <template #read-receipt="{ readerIds }">
+        <ReadReceiptAvatars :reader-ids="readerIds" />
+      </template>
+    </Conversation>
   </div>
 </template>
